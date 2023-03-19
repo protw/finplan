@@ -1,5 +1,5 @@
 print(''' 
-FIN_PLAN.PY v. 0.1 -- Побудова фінансового плану грантового проєкту 
+FIN_PLAN.PY v. 0.1.2 -- Побудова фінансового плану грантового проєкту 
     Author: Olegh Bondarenko, https://protw.github.io/oleghbond
     Date: March 18, 2023
     CC BY-NC 3.0
@@ -11,8 +11,7 @@ import pandas as pd
 import numpy as np
 import os, sys
 
-from wdaysm import (working_time_plan, create_date, working_days_num, 
-                    purchase_time_plan)
+from wdaysm import working_time_plan, working_days_num, purchase_time_plan
 
 """ Suppress SettingWithCopyWarning """
 
@@ -26,6 +25,9 @@ if len(sys.argv) != 2:
     sys.exit('Спробуй ще.')
 
 data_file = sys.argv[1]
+'''
+data_file = r'data/Task schedule (template).xlsx' # тестовий приклад-шаблон
+'''
 file_name, file_ext = os.path.splitext(data_file)
 result_file = file_name + '_finplan' + file_ext
 
@@ -64,10 +66,11 @@ wdays = pd.Series([ # серія (tasks x 1) тривалості завданн
 
 ''' Project overhead, start and end dates -- overhead, dps, dpe '''
 
-pars=pars.set_index('Parameter')['Value'] # convert from dataframe to series
+pars = pars.set_index('Parameter')['Value'] # convert from dataframe to series
 dps = pars['Start date']  # project start date
 dpe = pars['End date']  # project end date
 overhead = pars['Overhead']  # нарахування накладних витрат
+prj_name = pars['Project acronym']
 
 ''' Обчислення нормовочного коефіцієнта '''
 
@@ -297,6 +300,14 @@ qy_summary(user_month_pay)
 qy_summary(user_month_pers_day)
 qy_summary(general_month_pay)
 
+print('Загальні місячні витрати зроблено!')
+
+from proj_calendar import make_calendar
+
+calendar = make_calendar(tsk, users, prj_name)
+
+print('І ще бонус - календар проєкту зроблено!')
+
 ''' Зберегти всі таблиці в окремих аркушах ексель-файлу '''
 
 with pd.ExcelWriter(result_file, engine='xlsxwriter') as writer:
@@ -304,6 +315,7 @@ with pd.ExcelWriter(result_file, engine='xlsxwriter') as writer:
     user_month_pay.to_excel(writer, sheet_name='Monthly pers payment, Euro')
     user_month_pers_day.to_excel(writer, sheet_name='Tabel, pers-day')
     general_month_pay.to_excel(writer, sheet_name='All monthly payments')
+    calendar.to_excel(writer, sheet_name='Google calendar', index=False)
 
-print('Загальні місячні витрати зроблено!')
+print(f'Всі дані збережено у файлі `{result_file}`!')
 
