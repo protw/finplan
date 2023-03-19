@@ -1,8 +1,8 @@
-print(
-    ''' FIN_PLAN.PY -- Побудова фінансового плану грантового проєкту 
-        Author: Olegh Bondarenko, https://protw.github.io/oleghbond
-        Date: March 18, 2023
-        CC BY-NC 3.0
+print(''' 
+FIN_PLAN.PY v. 0.1 -- Побудова фінансового плану грантового проєкту 
+    Author: Olegh Bondarenko, https://protw.github.io/oleghbond
+    Date: March 18, 2023
+    CC BY-NC 3.0
     ''')
 
 ''' Необхідні бібліотеки '''
