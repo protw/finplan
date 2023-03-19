@@ -12,6 +12,7 @@ import numpy as np
 import os, sys
 
 from wdaysm import working_time_plan, working_days_num, purchase_time_plan
+from proj_calendar import make_calendar
 
 """ Suppress SettingWithCopyWarning """
 
@@ -302,7 +303,7 @@ qy_summary(general_month_pay)
 
 print('Загальні місячні витрати зроблено!')
 
-from proj_calendar import make_calendar
+''' Створення таблиці дат подій для розміщення у Гугл Календарі '''
 
 calendar = make_calendar(tsk, users, prj_name)
 
