@@ -8,19 +8,25 @@ Painless management of the grant project requires clear monthly financial planni
 
 # Content
 
-Purpose of the application
-Description of input data
-∘ `Task schedule`- calendar plan
-∘ `Task types`- type of tasks
-∘ `Team`- list of performers
-∘ `Budget`- project budget
-∘ `Parameters`- important project parameters
-Description of results
-Bonus: Google Calendar of project events
-Launching the application
-Links
+- Purpose of the application
 
+- Description of input data
+
+  - `Task schedule`- calendar plan
+  - `Task types`- type of tasks
+  - `Team`- list of performers
+  - `Budget`- project budget
+  - `Parameters`- important project parameters
+- Description of results
+  
+- Bonus: Google Calendar of project events
+  
+- Launching the application
+  
+- Links
+  
 # Purpose of the application
+
 
 Actually, this work of creating a financial monthly plan of individual payments and expenses for each separate item of the budget is performed by this application. Namely, from the calendar plan of works with the distribution of participation of performers and taking into account their individual rates, the application calculates and generates:
 
@@ -62,7 +68,7 @@ The values in the column `Cat`are entered through the drop-down list (which is t
 - `DateEnd`- task completion date
 - `Duration`- the number of working days (there is a formula in the table, so there is no need to correct anything, especially since the application does not take this field into account and calculates the number of working days on its own)
 
-> *⚠️* When entering new tasks, leave (or copy) the formula in the column `Duration`. This is important for checking the correctness of entered dates, as well as avoiding errors (dates may be entered incorrectly and the application will definitely stumble over them).
+> ⚠️*When entering new tasks, leave (or copy) the formula in the column `Duration`. This is important for checking the correctness of entered dates, as well as avoiding errors (dates may be entered incorrectly and the application will definitely stumble over them).*
 
 **The column `Cache`** indicates a specific amount of money for the task (type `cache`) (see table `Task types`).
 
