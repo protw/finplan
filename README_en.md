@@ -9,20 +9,15 @@ Painless management of the grant project requires clear monthly financial planni
 # Content
 
 - Purpose of the application
-
 - Description of input data
-
   - `Task schedule`- calendar plan
   - `Task types`- type of tasks
   - `Team`- list of performers
   - `Budget`- project budget
   - `Parameters`- important project parameters
 - Description of results
-  
 - Bonus: Google Calendar of project events
-  
 - Launching the application
-  
 - Links
   
 # Purpose of the application
