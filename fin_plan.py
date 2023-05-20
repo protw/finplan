@@ -19,16 +19,20 @@ from proj_calendar import make_calendar
 pd.set_option('mode.chained_assignment', None)
 
 ''' Блок початкових параметрів проєкту '''
+debug = False
 
-if len(sys.argv) != 2:
-    print('Введіть правильну команду:')
-    print('> python fin_plan.py <data_file.xlsx>')
-    sys.exit('Спробуй ще.')
+if not debug:
+    if len(sys.argv) != 2:
+        print('Введіть правильну команду:')
+        print('> python fin_plan.py <data_file.xlsx>')
+        sys.exit('Спробуй ще.')
 
-data_file = sys.argv[1]
-'''
-data_file = r'data/Task schedule (template).xlsx' # тестовий приклад-шаблон
-'''
+    data_file = sys.argv[1]
+else:
+    #data_file = r'data/Task schedule (template).xlsx' # тестовий приклад-шаблон
+    data_file = r'D:\boa_uniteam\UNITEAM\_PROJ\2_NOW\230318 WEDUA (US Embassy)\230501 РОБОЧІ ПЛАНИ'
+    data_file += r'\230424 Task schedule WEDUA.xlsx'
+
 file_name, file_ext = os.path.splitext(data_file)
 result_file = file_name + '_finplan' + file_ext
 
@@ -37,7 +41,10 @@ result_file = file_name + '_finplan' + file_ext
 skiprows = 1
 sheet_name = 'Task schedule'
 tsk = pd.read_excel(data_file, sheet_name=sheet_name, skiprows=skiprows)
-tsk.dropna(subset='WP', inplace=True)
+#tsk.dropna(subset='WP', inplace=True)
+cols = ['Tsk idx', 'WP', 'Cat', 'Task/Deliv #', 'DateStart', 'DateEnd']
+if tsk[cols].isnull().any().any():
+    raise Exception(f'Заповніть спочатку порожні клітинки у стовпчиках {cols}')
 
 skiprows = 3
 sheet_name = 'Team'
@@ -113,7 +120,10 @@ def get_workplan_long():
     daily_rate.name = 'Rate'
     contrib = tsk[users] / 100
     contribz = [contrib.iloc[i,:].dropna() * norm_coef for i in contrib.index]
-
+    '''contribz = []
+    for i in contrib.index:
+        contribz.append(contrib.loc[i,:].dropna() * norm_coef)'''
+        
     workplan_long = pd.DataFrame()
     for i, r in tsk_prop.iterrows():
         wdays_m = task_dates.loc[i,:]['wdays_m']
@@ -262,7 +272,7 @@ def prjm_in_quarters():
     ''' Згрупувати проєктні місяці за календарними кварталами '''
     mbq = [list(range(q*3+1, q*3+4)) for q in range(4)] # months by quarters
     ''' Видобути проєктні роки '''
-    drange1 = drange.drop(drange.iloc[-2:,:].index) # викреслити два останніх допоміжних рядки
+    drange1 = drange.drop(drange.iloc[-1:,:].index) # викреслити два останніх допоміжних рядки
     drange1.reset_index(inplace=True) # prjm into column
     prj_years = drange1.y.unique()
     prjmiy = {}
@@ -292,7 +302,8 @@ def qy_summary(df):
         
     for y, yv in prjmiy.items():
         for q, qv in yv['q'].items():
-            sub_summary(qv, f'Q{q:d}/Y{y}')
+            if qv:
+                sub_summary(qv, f'Q{q:d}/Y{y}')
         sub_summary(yv['prjm'], f'Y{y}')
         
     return
