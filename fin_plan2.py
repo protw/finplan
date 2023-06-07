@@ -12,7 +12,7 @@ import numpy as np
 import os, sys
 
 from fin_plan_time_util import (working_time_plan, working_days_num, 
-                                purchase_time_plan)
+                                purchase_time_plan, set_proj_months)
 from proj_calendar import make_calendar
 
 """ Suppress SettingWithCopyWarning """
@@ -31,6 +31,8 @@ if not debug:
     data_file = sys.argv[1]
 else:
     data_file = r'data/Task schedule (template).xlsx' # тестовий приклад-шаблон
+    data_file = r'D:/boa_uniteam/UNITEAM/_PROJ/2_NOW/210703 EFACA/РОБОЧІ ПЛАНИ/'
+    data_file += '230605 EFACA Task schedule - CEPA (4).xlsx'
 
 file_name, file_ext = os.path.splitext(data_file)
 result_file = file_name + '_finplan' + file_ext
@@ -78,6 +80,10 @@ dps = pars['Start date']  # project start date
 dpe = pars['End date']  # project end date
 overhead = pars['Overhead']  # нарахування накладних витрат
 prj_name = pars['Project acronym']
+''' Таблиця проєктних місяців містить на кожний місяць проєкту значення
+    {'y': years, 'm': months, 'q': quarters, 'prjm': prj_months, 
+     'ld': last_day_in_month, 'wd': working_days_in_month}'''
+prj_months = set_proj_months(dps, dpe)
 
 ''' Обчислення нормовочного коефіцієнта '''
 
@@ -260,6 +266,9 @@ rename_index()
 general_month_pay.loc['TOTALS',:] = general_month_pay.sum()
 general_month_pay.loc[:, 'TOTALS'] = general_month_pay.sum(axis=1)
 
+#from pivot_subtotals import pivot_w_subtot, pivot_w_subtot2
+#sys.exit('DEBUG STOP!')
+
 ''' Обчислюємо квартальні і річні підсумки та вставляємо їх у відповідні місця 
     до щомісячних трудовитрат (user_month_pers_day), виплат (user_month_pay) і 
     загального фін плану (general_month_pay) '''
@@ -294,7 +303,10 @@ def qy_summary(df):
         cols_all = df.columns
         cols = cols_all[cols_all.isin(prjm)]
         ishift = 1 if 'Q' in name else 2
-        icol = pd.Index(cols_all).get_loc(cols.max()) + ishift
+        try:
+            icol = pd.Index(cols_all).get_loc(cols.max()) + ishift
+        except:
+            raise Exception(f'prjm={prjm}, name={name}, cols_all={cols_all}, cols={list(cols)}, ishift={ishift}')
         tot = df.loc[:,cols].sum(axis=1)
         tot_name = name
         df.insert(loc=icol, column=tot_name, value=tot)

@@ -1,5 +1,5 @@
-from datetime import datetime
-from datetime import date
+from datetime import datetime, date
+from dateutil.rrule import rrule, MONTHLY
 from dateutil.relativedelta import relativedelta
 from calendar import monthrange
 
@@ -13,15 +13,19 @@ def create_date(d):
     return datetime.strptime(d, format_string)
 
 def check_dates_consistency(task_dates, dps, dpe):
+    def norm_date(d):
+        return datetime(d.year, d.month, d.day)
+    dps, dpe = norm_date(dps), norm_date(dpe)
     if dps > dpe:
         raise Exception(f'Project start date `{dps}` should be earlier project end date `{dpe}`')
     for i, r in task_dates.iterrows():
-        if r.ds > r.de:
+        ds, de = norm_date(r.ds), norm_date(r.de)
+        if ds > de:
             raise Exception(f'Task {i} start date `{r.ds}` should be earlier task end date `{r.de}`')
-        if r.ds < dps or r.ds > dpe:
+        if ds < dps or ds > dpe:
             raise Exception(f'Task {i} start date `{r.ds}` is out the project time frame')
-        if r.de < dps or r.de > dpe:
-            raise Exception(f'Task {i} start date `{r.de}` is out the project time frame')
+        if de < dps or de > dpe:
+            raise Exception(f'Task {i} end date `{r.de}` is out the project time frame')
         
     return True
 
@@ -130,6 +134,49 @@ def purchase_time_plan(task_dates, dps, dpe):
     task_dates = days_in_each_month_of_period(drange, task_dates)
     return task_dates, drange
 
+def set_proj_months(date_start, date_end):
+    ''' # Таблиця проєктних місяців містить на кожний місяць значення
+        {'y': years, 'm': months, 'q': quarters, 'prjm': prj_months, 
+         'ld': last_day_in_month, 'wd': working_days_in_month}
+    '''
+    month_steps = [dt for dt in rrule(MONTHLY, dtstart=date_start, until=date_end)]
+    years = [dt.year for dt in month_steps]
+    months = [dt.month for dt in month_steps]
+    quarters = [int((dt.month - 1)/3) + 1 for dt in month_steps]
+    prj_months = [m + 1 for m in range(len(month_steps))] # number of project month
+    last_days_in_month = [days_in_month(dt) for dt in month_steps]
+    df = pd.DataFrame({'y': years, 'm': months, 'q': quarters, 
+                       'prjm': prj_months, 'ld': last_days_in_month})
+    df['wd'] = [working_days_in_month(r) for _, r in df.iterrows()]
+    
+    return df
+
+def wdays_in_each_task_month(tsk, prj_months):
+    ''' Обчислюємо кількість робочих днів 'twd' для кожного місяця, на який 
+        припадає завдання (додатково до інших параметрів проєктного місяця 
+        з `prj_months`) '''
+    def get_prj_month_from_ym(prj_months, y, m):
+        return prj_months.loc[(prj_months.y==y) & (prj_months.m==m)].index[0]    
+    
+    tsk_months = pd.DataFrame()
+    for tsk_id, t in tsk.iterrows():
+        prjm_s = get_prj_month_from_ym(prj_months, t.ds.year, t.ds.month)
+        prjm_e = get_prj_month_from_ym(prj_months, t.de.year, t.de.month)
+        # Місяці, на які припадає завдання
+        t_months = prj_months.loc[range(prjm_s, prjm_e + 1)]
+        tm_num = len(t_months) # Кількість місяців, на які припадає завдання
+        wdays = []
+        for i, tm in t_months.iterrows():
+            day_s = t.ds.day if i == 1 else 1 # Перший день завдання у місяці
+            day_e = t.de.day if i == tm_num else tm.ld # Останній день завдання у місяці
+            wdays.append(working_days_num(date(tm.y, tm.m, day_s), 
+                                        date(tm.y, tm.m, day_e)))
+        t_months['twd'] = wdays
+        t_months['id'] = tsk_id
+        tsk_months = pd.concat([tsk_months, t_months])
+    
+    return tsk_months
+
 
 if __name__ == '__main__':
 
@@ -161,4 +208,5 @@ if __name__ == '__main__':
     for _, r in task_dates.iterrows():
         print(r.prjms, r.prjme, r.wdn, int(r.wdays_m.sum()))
 
+    prjm = set_proj_months(dps, dpe)
     
