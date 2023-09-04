@@ -20,7 +20,7 @@ from proj_calendar import make_calendar
 
 print(''' == БЛОК ПОЧАТКОВИХ ПАРАМЕТРІВ ПРОЄКТУ == ''')
 
-debug = True #False
+debug = False
 
 def get_file_names():
     if not debug:
