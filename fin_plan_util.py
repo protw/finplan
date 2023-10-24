@@ -29,7 +29,11 @@ def read_input_data(data_file, tsk_short_names):
     sheet_name = 'Parameters'
     pars = pd.read_excel(data_file, sheet_name=sheet_name, skiprows=skiprows)
     
-    return tsk, team, tbudget, tsk_type, pars
+    skiprows = 0
+    sheet_name = 'WP-PM'
+    wppm = pd.read_excel(data_file, sheet_name=sheet_name, skiprows=skiprows)
+    
+    return tsk, team, tbudget, tsk_type, pars, wppm
 
 def validate_input_data(tsk, tbudget, tsk_short_names, dps, dpe):
     def get_dict_key_from_value(d, v):
@@ -70,10 +74,10 @@ def create_two_long_tables(tsk, prj_months, users, tsk_type):
     # Встановлюємо 'id' завдання у якості індекса таблиці
     tsk_months = tsk_months.reset_index().set_index('id')
     # Об'єднуємо завдання і параметри робочих місяців
-    cols_selected = ['id', 'cat', 'cache'] + users
+    cols_selected = ['id', 'wp', 'cat', 'cache'] + users
     tsk_ext = pd.concat([tsk_months, tsk[cols_selected]], axis=1)
     # Створюємо довгу таблицю щомісячних фрагментів завдань
-    id_vars = list(tsk_months.columns) + ['id', 'cat', 'cache']
+    id_vars = list(tsk_months.columns) + ['id', 'wp', 'cat', 'cache']
     tsk_long = pd.melt(tsk_ext, id_vars=id_vars, value_vars=users, 
                     var_name='user', value_name='contrib')
     # Виокремлюємо довгу таблицю щомісячних фрагментів завдань типу 'prop' (пропорційні) 
@@ -95,14 +99,33 @@ def create_two_long_tables(tsk, prj_months, users, tsk_type):
     
     return tsk_prop, tsk_cache
 
-def gen_pers_days_payment(team, tsk_prop, tot_salary):
+def gen_pers_days_payment(team, tsk_prop, tot_salary, wppm):
     denna_stavka = [team.loc[user]['Ставка, Є/день'] for user in tsk_prop.user]
     tsk_prop['d_wages'] = denna_stavka
+    wppm = pd.Series(list(wppm.pm), index=wppm.wp)
+    '''
+    pm_total = sum(wppm)
+    tsk_prop['pm'] = [wppm[wp] for wp in tsk_prop.wp]
+    
+    twd_total = tsk_prop.twd.sum()
+    w_days_in_month = 22
+    for wp, wp_df in tsk_prop.groupby('wp'):
+        twd_wp = wp_df.twd.sum()
+        wp_df.twd / twd_wp * wppm[wp] * w_days_in_month
+    '''
+    
     # Обчислюємо нормувальний коефіцієнт
-    norm_coef = tot_salary/(tsk_prop.twd * tsk_prop.contrib * tsk_prop.d_wages).sum()
+    norm_coef = tot_salary / (tsk_prop.twd * tsk_prop.contrib * tsk_prop.d_wages).sum()
     # Обчислюємо щомісячні персональні трудовитрати для кожного завдання
     pers_day_month = tsk_prop.twd * tsk_prop.contrib * norm_coef
     tsk_prop['pers_day'] = pers_day_month
+    
+    w_days_in_month = 20.7
+    wppd = wppm * w_days_in_month
+    pdm = pd.pivot_table(tsk_prop, values='pers_day',index='wp',aggfunc=sum).pers_day
+    coef = wppd / pdm
+    tsk_prop['pers_day'] = [row.pers_day * coef[row.wp] for _, row in tsk_prop.iterrows()]
+
     tsk_prop['pers_pay'] = pers_day_month * tsk_prop.d_wages
     
     pers_day = {pers: df.pers_day.sum() for pers, df in tsk_prop.groupby('user')}
@@ -125,7 +148,7 @@ def gen_pers_days_payment(team, tsk_prop, tot_salary):
     totals.name = 'TOTALS'
     team = pd.concat([team, pd.DataFrame(totals).T])
     
-    return team
+    return team, tsk_prop
 
 def join_two_long_tables(tsk_prop, tsk_cache, tsk_type):
     tsk_prop.drop(columns=['user', 'contrib', 'd_wages', 'pers_day'], inplace=True)
