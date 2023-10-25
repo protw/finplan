@@ -79,7 +79,7 @@ def finplan_main(data_dir:str=''):
     
     print(''' == ВАЛІДАЦІЯ ВХІДНИХ ДАНИХ == ''')
     
-    validate_input_data(tsk, tbudget, tsk_short_names, dps, dpe)
+    validate_input_data(tsk, tbudget, wppm, tsk_short_names, dps, dpe)
     
     # Викреслюємо повністю порожні рядки у стовпчиках 'cache' та `users`
     tsk = tsk.loc[tsk[['cache',] + users].any(axis=1)]

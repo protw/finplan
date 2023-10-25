@@ -35,7 +35,7 @@ def read_input_data(data_file, tsk_short_names):
     
     return tsk, team, tbudget, tsk_type, pars, wppm
 
-def validate_input_data(tsk, tbudget, tsk_short_names, dps, dpe):
+def validate_input_data(tsk, tbudget, wppm, tsk_short_names, dps, dpe):
     def get_dict_key_from_value(d, v):
         return list(d.keys())[list(d.values()).index(v)]
     # Перевірка відсутності незаповнених елементів
@@ -53,16 +53,29 @@ def validate_input_data(tsk, tbudget, tsk_short_names, dps, dpe):
     if budget_total != budget_items_sum:
         raise Exception(f'Загальний бюджет {budget_total} не збігається із ' + \
                         f'сумою статей бюджету {budget_items_sum}')
-    # Перевірка відсутності дублікатів у стовпчиках 'id' і 'no'
-    def check_dupl_in_col(col_name):
-        col_old = get_dict_key_from_value(tsk_short_names, col_name)
-        tsk_id = tsk[col_name]
-        tsk_id_dupl = tsk_id[tsk_id.duplicated()].index
-        if len(tsk_id_dupl) > 0:
-            raise Exception(f'У стовпчику `{col_old}` є дублікати ' + \
-                            f'{tsk_id.iloc[tsk_id_dupl]}')
-    check_dupl_in_col('id')
-    check_dupl_in_col('no')
+    # Перевірка відсутності дублікатів у стовпчиках 'id', 'no' і 'wp'
+    def check_dupl_in_col(df:pd.DataFrame, col_name:str):
+        col = list(df[col_name])
+        return {x for x in col if col.count(x) > 1}
+    
+    dupl = check_dupl_in_col(tsk, 'id')
+    col_old = get_dict_key_from_value(tsk_short_names, 'id')
+    assert len(dupl) == 0, f'Дублі {dupl} у стовп. "{col_old}" табл. "Task schedule"'
+
+    dupl = check_dupl_in_col(tsk, 'no')
+    col_old = get_dict_key_from_value(tsk_short_names, 'no')
+    assert len(dupl) == 0, f'Дублі {dupl} у стовп. "{col_old}" табл. "Task schedule"'
+
+    dupl = check_dupl_in_col(wppm, 'wp')
+    assert len(dupl) == 0, f'Дублі {dupl} у стовп. "wp" табл. "WP-PM"'
+    
+    # Перевірка відповідності РП у таблицях "Task schedule" і "WP-PM"
+    wp_in_tsk = set(tsk.wp)
+    wp_in_wppm = set(wppm.wp)
+    extra_wp_in_tsk = wp_in_tsk - wp_in_wppm
+    extra_wp_in_wppm = wp_in_wppm - wp_in_tsk
+    assert len(extra_wp_in_tsk) == 0, f'РП {extra_wp_in_tsk}: зайві у "Task schedule" або відсутні у "WP-PM"' 
+    assert len(extra_wp_in_wppm) == 0, f'РП {extra_wp_in_wppm}: зайві у "WP-PM" або відсутні у "Task schedule"'
     
     return
 
@@ -103,16 +116,6 @@ def gen_pers_days_payment(team, tsk_prop, tot_salary, wppm):
     denna_stavka = [team.loc[user]['Ставка, Є/день'] for user in tsk_prop.user]
     tsk_prop['d_wages'] = denna_stavka
     wppm = pd.Series(list(wppm.pm), index=wppm.wp)
-    '''
-    pm_total = sum(wppm)
-    tsk_prop['pm'] = [wppm[wp] for wp in tsk_prop.wp]
-    
-    twd_total = tsk_prop.twd.sum()
-    w_days_in_month = 22
-    for wp, wp_df in tsk_prop.groupby('wp'):
-        twd_wp = wp_df.twd.sum()
-        wp_df.twd / twd_wp * wppm[wp] * w_days_in_month
-    '''
     
     # Обчислюємо нормувальний коефіцієнт
     norm_coef = tot_salary / (tsk_prop.twd * tsk_prop.contrib * tsk_prop.d_wages).sum()
