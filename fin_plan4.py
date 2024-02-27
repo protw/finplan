@@ -24,7 +24,9 @@ def get_file_names(data_dir:str=''):
     ''' Коли функція знаходить CLI аргумент, вона бере його як ім'я файлу даних.
         Коли CLI аргумент відсутній, функція зчитує свій вх аргумент як ім'я
         теки, де шукає один .xlsx-файл вх даних. '''
-    if len(data_dir) == 0 & len(sys.argv) >= 2:
+    data_file = '' 
+    print('ARGV:', sys.argv)
+    if (len(data_dir) == 0) & (len(sys.argv) >= 2):
         data_file = sys.argv[1]
     elif len(data_dir) > 0:
         if not os.path.isdir(data_dir):
@@ -94,21 +96,23 @@ def finplan_main(data_dir:str=''):
     
     print(''' == ЩОМІСЯЧНІ ТРУДОВИТРАТИ І ВИПЛАТИ == ''')
     
-    user_month_pay = pivot_w_subtot2(df=tsk_prop, 
+    idx = tsk_prop.index[pd.isnull(tsk_prop.pers_pay)]
+    user_month_pay = pivot_w_subtot2(df=tsk_prop.drop(idx), 
                                     values='pers_pay', 
                                     indices=['user'], 
                                     columns=['y', 'q', 'prjm'], 
                                     aggfunc=np.nansum)
     user_month_pay.rename(index={'':'TOTAL'}, columns={'':'TOTAL'}, inplace=True)
     
-    user_month_pers_day = pivot_w_subtot2(df=tsk_prop, 
+    idx = tsk_prop.index[pd.isnull(tsk_prop.pers_day)]
+    user_month_pers_day = pivot_w_subtot2(df=tsk_prop.drop(idx), 
                                     values='pers_day', 
                                     indices=['user'], 
                                     columns=['y', 'q', 'prjm'], 
                                     aggfunc=np.nansum)
     user_month_pers_day.rename(index={'':'TOTAL'}, columns={'':'TOTAL'}, inplace=True)
     
-    wp_month_pers_day = pivot_w_subtot2(df=tsk_prop,
+    wp_month_pers_day = pivot_w_subtot2(df=tsk_prop.drop(idx),
                                         values='pers_day',
                                         indices=['wp'],
                                         columns=['y', 'q', 'prjm'],
@@ -125,10 +129,19 @@ def finplan_main(data_dir:str=''):
     overhead_month['cat'] = 'Overheads'
     overhead_month.reset_index(inplace=True)
     
+    overhead_month.fillna(value={'cache':0}, inplace=True)
+    '''
+    overhead_month = pd.concat([
+        overhead_month.set_index(['y','prjm']),
+        prj_months.reset_index(names='prjm').set_index(['y','prjm'])
+        ], axis=1).reset_index(names=['y','prjm']).fillna(value={'cache':0})
+    '''
+    
     # Включимо накладні до загальних витрат
     tsk_cache_upd = pd.concat([tsk_cache_upd, overhead_month])
     
-    general_month_pay = pivot_w_subtot2(df=tsk_cache_upd, 
+    idx = tsk_prop.index[pd.isnull(tsk_prop.cache)]
+    general_month_pay = pivot_w_subtot2(df=tsk_cache_upd.drop(idx), 
                                         values='cache', 
                                         indices=['cat'], 
                                         columns=['y', 'q', 'prjm'], 
@@ -155,5 +168,8 @@ def finplan_main(data_dir:str=''):
     print('DONE!')
 
 if __name__ == '__main__':
-    data_dir = 'data'
+    #data_dir = 'data'
+    #data_dir = 'data_toural'
+    #data_dir = 'data_m4n'
+    data_dir = '' # Це для подання шляху файлу даних як CLI аргументу
     finplan_main(data_dir)

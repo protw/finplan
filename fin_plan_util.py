@@ -8,6 +8,7 @@ def read_input_data(data_file, tsk_short_names):
     skiprows = 1
     sheet_name = 'Task schedule'
     tsk = pd.read_excel(data_file, sheet_name=sheet_name, skiprows=skiprows)
+    tsk.fillna(value={'Description of task': ''}, inplace=True)
     tsk.rename(columns=tsk_short_names, inplace=True)
     
     skiprows = 3
@@ -50,9 +51,9 @@ def validate_input_data(tsk, tbudget, wppm, tsk_short_names, dps, dpe):
     budget_items.remove('TOTAL')
     budget_total = tbudget.loc['TOTAL'].Total # Загальний бюджет з таблиці
     budget_items_sum = tbudget.loc[budget_items].Total.sum() # Сума статей бюджету
-    if budget_total != budget_items_sum:
-        raise Exception(f'Загальний бюджет {budget_total} не збігається із ' + \
-                        f'сумою статей бюджету {budget_items_sum}')
+    if round(budget_total, 2) != round(budget_items_sum, 2):
+        raise Exception(f'Загальний бюджет {round(budget_total, 2)} не збігається із ' + \
+                        f'сумою статей бюджету {round(budget_items_sum, 2)}')
     # Перевірка відсутності дублікатів у стовпчиках 'id', 'no' і 'wp'
     def check_dupl_in_col(df:pd.DataFrame, col_name:str):
         col = list(df[col_name])
@@ -117,19 +118,29 @@ def gen_pers_days_payment(team, tsk_prop, tot_salary, wppm):
     tsk_prop['d_wages'] = denna_stavka
     wppm = pd.Series(list(wppm.pm), index=wppm.wp)
     
-    # Обчислюємо нормувальний коефіцієнт
-    norm_coef = tot_salary / (tsk_prop.twd * tsk_prop.contrib * tsk_prop.d_wages).sum()
-    # Обчислюємо щомісячні персональні трудовитрати для кожного завдання
-    pers_day_month = tsk_prop.twd * tsk_prop.contrib * norm_coef
-    tsk_prop['pers_day'] = pers_day_month
+    # Обчислюємо трудовитрати у люд*днях на людину на місяць на завдання з 
+    # урахуванням нормування трудовтрат у кожному роб. пакеті 'wp'
+    wppm_tot = wppm.sum() # сума люд*міс за весь проєкт
+    tsk_prop_ = pd.DataFrame()
+    for wp, tsk_prop_wp in tsk_prop.groupby('wp'):
+        norm_coef = tot_salary * wppm[wp] / wppm_tot / \
+            (tsk_prop_wp.twd * tsk_prop_wp.contrib * tsk_prop_wp.d_wages).sum()
+        # Обчислюємо щомісячні персональні трудовитрати для кожного завдання
+        pers_day_month = tsk_prop_wp.twd * tsk_prop_wp.contrib * norm_coef
+        tsk_prop_wp['pers_day'] = pers_day_month
+        tsk_prop_ = pd.concat([tsk_prop_, tsk_prop_wp])
+    tsk_prop = tsk_prop_
     
     w_days_in_month = 20.7
     wppd = wppm * w_days_in_month
     pdm = pd.pivot_table(tsk_prop, values='pers_day',index='wp',aggfunc=sum).pers_day
     coef = wppd / pdm
     tsk_prop['pers_day'] = [row.pers_day * coef[row.wp] for _, row in tsk_prop.iterrows()]
-
-    tsk_prop['pers_pay'] = pers_day_month * tsk_prop.d_wages
+    tsk_prop['pers_pay'] = tsk_prop.pers_day * tsk_prop.d_wages
+    
+    # нормуємо виплати і трудовитрати на сумарний фонд оплати праці у проєкті
+    corr_coef = tot_salary / tsk_prop.pers_pay.sum()
+    tsk_prop.pers_pay *= corr_coef
     
     pers_day = {pers: df.pers_day.sum() for pers, df in tsk_prop.groupby('user')}
     pers_day = pd.Series(pers_day)
@@ -150,6 +161,9 @@ def gen_pers_days_payment(team, tsk_prop, tot_salary, wppm):
     totals = pd.Series(team[cols_to_sum].sum(), index=cols_to_sum)
     totals.name = 'TOTALS'
     team = pd.concat([team, pd.DataFrame(totals).T])
+    
+    team.drop(columns=['Ставка, вал/год', 'Ставка, вал/день'], inplace=True)
+    team.index.name = 'Nick'
     
     return team, tsk_prop
 

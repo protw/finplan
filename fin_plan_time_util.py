@@ -169,8 +169,13 @@ def wdays_in_each_task_month(tsk, prj_months):
         for i, tm in t_months.iterrows():
             day_s = t.ds.day if i == 1 else 1 # Перший день завдання у місяці
             day_e = t.de.day if i == tm_num else tm.ld # Останній день завдання у місяці
-            wdays.append(working_days_num(date(tm.y, tm.m, day_s), 
-                                        date(tm.y, tm.m, day_e)))
+            try:
+                wdays.append(working_days_num(date(tm.y, tm.m, day_s), 
+                                              date(tm.y, tm.m, day_e)))
+            except:
+                wdays.append(working_days_num(date(tm.y, tm.m, day_s), 
+                                              date(tm.y, tm.m, day_e-1)))
+                #print(tm.y, tm.m, day_s, day_e)
         t_months['twd'] = wdays
         t_months['id'] = tsk_id
         tsk_months = pd.concat([tsk_months, t_months])
