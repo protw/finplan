@@ -139,7 +139,9 @@ def set_proj_months(date_start, date_end):
         {'y': years, 'm': months, 'q': quarters, 'prjm': prj_months, 
          'ld': last_day_in_month, 'wd': working_days_in_month}
     '''
-    month_steps = [dt for dt in rrule(MONTHLY, dtstart=date_start, until=date_end)]
+    date_end_m = datetime(date_end.year, date_end.month, days_in_month(date_end))
+    month_steps = [dt for dt in rrule(MONTHLY, dtstart=date_start, 
+                                      until=date_end_m)]
     years = [dt.year for dt in month_steps]
     months = [dt.month for dt in month_steps]
     quarters = [int((dt.month - 1)/3) + 1 for dt in month_steps]
@@ -166,16 +168,12 @@ def wdays_in_each_task_month(tsk, prj_months):
         t_months = prj_months.loc[range(prjm_s, prjm_e + 1)]
         tm_num = len(t_months) # Кількість місяців, на які припадає завдання
         wdays = []
-        for i, tm in t_months.iterrows():
-            day_s = t.ds.day if i == 1 else 1 # Перший день завдання у місяці
-            day_e = t.de.day if i == tm_num else tm.ld # Останній день завдання у місяці
-            try:
-                wdays.append(working_days_num(date(tm.y, tm.m, day_s), 
-                                              date(tm.y, tm.m, day_e)))
-            except:
-                wdays.append(working_days_num(date(tm.y, tm.m, day_s), 
-                                              date(tm.y, tm.m, day_e-1)))
-                #print(tm.y, tm.m, day_s, day_e)
+        for i in range(tm_num):
+            tm = t_months.iloc[i, :]
+            day_s = t.ds.day if i == 0 else 1 # Перший день завдання у місяці
+            day_e = t.de.day if i == tm_num - 1 else tm.ld # Останній день завдання у місяці
+            wdays.append(working_days_num(date(tm.y, tm.m, day_s), 
+                                          date(tm.y, tm.m, day_e)))
         t_months['twd'] = wdays
         t_months['id'] = tsk_id
         tsk_months = pd.concat([tsk_months, t_months])

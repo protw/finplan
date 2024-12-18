@@ -94,8 +94,10 @@ def create_two_long_tables(tsk, prj_months, users, tsk_type):
     id_vars = list(tsk_months.columns) + ['id', 'wp', 'cat', 'cache']
     tsk_long = pd.melt(tsk_ext, id_vars=id_vars, value_vars=users, 
                     var_name='user', value_name='contrib')
+    # У contrib можуть бути або нулі або None - робимо все None
+    tsk_long.loc[tsk_long.contrib == 0,'contrib'] = None
     # Виокремлюємо довгу таблицю щомісячних фрагментів завдань типу 'prop' (пропорційні) 
-    tsk_prop = tsk_long.loc[tsk_long.cache.isnull() & ~tsk_long.contrib.isnull()] 
+    tsk_prop = tsk_long.loc[tsk_long.cache.isnull() & ~tsk_long.contrib.isnull(), :] 
     tsk_prop = tsk_prop.drop('cache', axis=1)
     tsk_prop_cats = set(tsk_prop.cat.unique()) # Категорії завдань проміж персональних
     tsk_prop_types = set(tsk_type.loc[tsk_type.Type=='prop','Cat']) # Всі категорії проп. завдань
@@ -103,7 +105,7 @@ def create_two_long_tables(tsk, prj_months, users, tsk_type):
         raise Exception(f'Деякі персональні завдання містять категорії {tsk_prop_cats} ' + \
                         f'поза визначених типів {tsk_prop_types}')
     
-    tsk_cache = tsk_long.loc[~tsk_long.cache.isnull() & tsk_long.contrib.isnull()] 
+    tsk_cache = tsk_long.loc[~tsk_long.cache.isnull() & tsk_long.contrib.isnull(), :] 
     tsk_cache = tsk_cache.drop(['user', 'contrib'], axis=1)
     tsk_cache_cats = set(tsk_cache.cat.unique()) # Категорії завдань проміж типу 'кеш'
     tsk_cache_types = set(tsk_type.loc[tsk_type.Type=='cache','Cat']) # Всі категорії 'кеш' завдань
@@ -168,7 +170,8 @@ def gen_pers_days_payment(team, tsk_prop, tot_salary, wppm):
     return team, tsk_prop
 
 def join_two_long_tables(tsk_prop, tsk_cache, tsk_type):
-    tsk_prop.drop(columns=['user', 'contrib', 'd_wages', 'pers_day'], inplace=True)
+    #tsk_prop.drop(columns=['user', 'contrib', 'd_wages', 'pers_day'], inplace=True)
+    tsk_prop.drop(columns=['contrib', 'd_wages'], inplace=True)
     tsk_prop.rename(columns={'pers_pay': 'cache'}, inplace=True)
     tsk_prop.cat = 'Personnel costs'
 

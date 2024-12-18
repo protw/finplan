@@ -10,7 +10,7 @@ print(''' Необхідні бібліотеки ''')
 
 import pandas as pd
 import numpy as np
-import sys
+import os, sys, glob
 
 from get_args import get_args
 
@@ -22,15 +22,37 @@ from pivot_subtotals import pivot_w_subtot2
 from proj_calendar import make_calendar
 
 
-def finplan_main(args=[]):
+def get_file_names(data_dir:str=''):
+    ''' Коли функція знаходить CLI аргумент, вона бере його як ім'я файлу даних.
+        Коли CLI аргумент відсутній, функція зчитує свій вх аргумент як ім'я
+        теки, де шукає один .xlsx-файл вх даних. '''
+    data_file = '' 
+    print('ARGV:', sys.argv)
+    if (len(data_dir) == 0) & (len(sys.argv) >= 2):
+        data_file = sys.argv[1]
+    elif len(data_dir) > 0:
+        if not os.path.isdir(data_dir):
+            sys.exit(f'Немає такої теки: `{data_dir}`')
+        file_list = glob.glob(os.path.join(data_dir, '*.xlsx'))
+        if len(file_list) != 1:
+            sys.exit(f'Має бути лише 1 XLSX-файл у теці: `{data_dir}`')
+        data_file = file_list[0]
+        
+    print(' == ', 'data_file: ', data_file)
+    
+    file_name, file_ext = os.path.splitext(data_file)
+    if file_ext.lower() != '.xlsx':
+        sys.exit(f'Файл має мати розширення ".XLSX": `{data_file}`')
+    result_file = file_name + '_finplan' + file_ext
+    
+    return data_file, result_file
+
+def finplan_main(data_dir:str=''):
     print(''' == БЛОК ПОЧАТКОВИХ ПАРАМЕТРІВ ПРОЄКТУ == ''')
     
-    if len(args) == 0:
-        args = sys.argv # аргументи з командного рядка
-    elif (len(args) % 2) == 0:
-        args = ['',] + args # через вх аргументи функції, для відладки
+    #data_file, result_file = get_file_names(data_dir)
     
-    data_file, result_file = get_args(args)
+    data_file, result_file = get_args(sys.argv)
     
     print(''' == ЗЧИТУЄМО ДАНІ СТОСОВНО ПРОЄКТУ == ''')
     
@@ -163,9 +185,8 @@ def finplan_main(args=[]):
     print('DONE!')
 
 if __name__ == '__main__':
-    #args = ['-f', r"D:\boa_uniteam\UNITEAM\_PROJ\2_NOW\230514 SUNDANSE\240402 РОБОЧІ ПЛАНИ\240111 SUNDANSE Task schedule.xlsx"]
-    args = ['-f', r"D:\boa_uniteam\UNITEAM\_PROJ\2_NOW\211011 CitiObs\230208 WORK PLANS\241217 CITIOBS Task schedule 2025.xlsx"]
-    #args = ['-d', r"../finplandata"]
-    #args = sys.argv # аргументи з командного рядка
-    
-    finplan_main(args)
+    #data_dir = 'data'
+    #data_dir = 'data_toural'
+    #data_dir = 'data_m4n'
+    data_dir = '' # Це для подання шляху файлу даних як CLI аргументу
+    finplan_main(data_dir)

@@ -63,7 +63,7 @@ def pivot_w_subtot2(df, values, indices, columns, aggfunc=np.nansum,
     '''
 
     df_long = df.copy()
-    df_long.fillna('-', inplace=True)
+    #df_long.fillna('-', inplace=True) # МОЖЛИВО ЦЕЙ РЯДОК ЗАЙВИЙ ?!
     
     ''' Створюємо два нові тимчасові (dummy) стовпчики для отримання загальних 
         підсумків по вертикалі і горизонталі лише на найверхньому рівні. '''
@@ -96,6 +96,30 @@ def pivot_w_subtot2(df, values, indices, columns, aggfunc=np.nansum,
     df_wide.columns = df_wide.columns.droplevel(0)
     
     return df_wide
+
+def pivot_w_subtot3(df, values, indices, columns, aggfunc=np.nansum, 
+                    fill_value=np.nan):
+    ''' Дрібні доопрацювання навколо 'pivot_w_subtot2':
+        -- викреслюємо всі значення типу None, np.nan тощо, бо pivot їх не любить;
+        -- заповнюємо підсумкові (порожні) значення індексів і стовпчиків 
+           значенням 'TOTAL'.'''
+    if isinstance(values, str):
+        values = [values,]
+    #idx = pd.Series(False, index=df.index)
+    for i, val in enumerate(values):
+        if i == 0:
+            idx = pd.isnull(df.loc[:, val])
+        else:
+            idx |= idx
+    df_wide = pivot_w_subtot2(df=df.loc[~idx, :], 
+                              values=values, 
+                              indices=indices, 
+                              columns=columns, 
+                              aggfunc='sum')
+    df_wide.rename(index={'':'TOTAL'}, columns={'':'TOTAL'}, inplace=True)
+    
+    return df_wide
+
 
 if __name__ == '__main__':
     
